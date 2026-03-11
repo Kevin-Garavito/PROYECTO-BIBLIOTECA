@@ -1,30 +1,34 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Shield } from "lucide-react";
+import { BookOpen, Shield, Search, MapPin, X, ArrowRight } from "lucide-react";
 import SearchBar from "@/components/SearchBar";
 import BookCard from "@/components/BookCard";
 import LibraryMap from "@/components/LibraryMap";
 import { Book, sampleBooks } from "@/data/books";
 import { Button } from "@/components/ui/button";
+import heroImage from "@/assets/hero-library.jpg";
 
 const Index = () => {
   const [books] = useState<Book[]>(sampleBooks);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
 
   const handleSelectBook = (book: Book) => {
     setSelectedBook(book);
-    setSelectedBlock(book.block);
-    setShowMap(true);
-    // Scroll to map
+    setShowMap(false);
     setTimeout(() => {
-      document.getElementById("library-map")?.scrollIntoView({ behavior: "smooth" });
+      document.getElementById("book-detail")?.scrollIntoView({ behavior: "smooth" });
     }, 100);
   };
 
   const handleViewLocation = (book: Book) => {
-    handleSelectBook(book);
+    setSelectedBook(book);
+    setSelectedBlock(book.block);
+    setShowMap(true);
+    setTimeout(() => {
+      document.getElementById("library-map")?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const categories = useMemo(() => [...new Set(books.map((b) => b.category))], [books]);
@@ -32,11 +36,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container flex items-center justify-between h-16 px-4">
+      <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="container flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-2.5">
-            <BookOpen className="h-7 w-7 text-primary" />
-            <span className="font-display text-xl font-bold text-foreground">BiblioSearch</span>
+            <BookOpen className="h-6 w-6 text-primary" />
+            <span className="font-display text-lg font-bold text-foreground">BiblioSearch</span>
           </div>
           <Link to="/admin">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
@@ -47,47 +51,78 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero + Search */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="container max-w-3xl text-center space-y-6">
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground leading-tight">
-            Sistema de Búsqueda
-            <br />
-            <span className="text-primary">Bibliográfica</span>
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Encuentra y localiza material bibliográfico de forma rápida. Busca por título, autor, categoría o ISBN.
-          </p>
-          <SearchBar books={books} onSelectBook={handleSelectBook} />
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={heroImage} alt="Biblioteca" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-foreground/80 via-foreground/60 to-background" />
+        </div>
+        <div className="relative z-10 py-20 md:py-32 px-4">
+          <div className="container max-w-3xl text-center space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gold/20 border border-gold/30 text-sm text-gold mb-2">
+              <BookOpen className="h-3.5 w-3.5" />
+              Politécnico Colombiano Jaime Isaza Cadavid
+            </div>
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-primary-foreground leading-tight drop-shadow-lg">
+              Encuentra tu próximo
+              <br />
+              <span className="text-gold">libro</span>
+            </h1>
+            <p className="text-primary-foreground/80 text-lg max-w-xl mx-auto">
+              Busca y localiza material bibliográfico al instante. Escribe título, autor, categoría o ISBN.
+            </p>
+            <div className="pt-2">
+              <SearchBar books={books} onSelectBook={handleSelectBook} />
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Selected Book Detail */}
       {selectedBook && (
-        <section className="px-4 pb-8">
+        <section id="book-detail" className="px-4 py-10">
           <div className="container max-w-2xl">
-            <div className="bg-card border border-border rounded-xl p-6 flex gap-6 animate-fade-in">
-              <div className="w-24 h-32 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                {selectedBook.coverUrl ? (
-                  <img src={selectedBook.coverUrl} alt={selectedBook.title} className="w-full h-full object-cover rounded-lg" />
-                ) : (
-                  <BookOpen className="h-10 w-10 text-primary/30" />
-                )}
-              </div>
-              <div className="space-y-1.5 min-w-0">
-                <h2 className="font-display text-xl font-bold text-foreground">{selectedBook.title}</h2>
-                <p className="text-sm text-muted-foreground">{selectedBook.author} · {selectedBook.year > 0 ? selectedBook.year : `${Math.abs(selectedBook.year)} a.C.`}</p>
-                <p className="text-sm text-muted-foreground">{selectedBook.category} · ISBN: {selectedBook.isbn}</p>
-                <p className="text-sm text-muted-foreground">{selectedBook.description}</p>
-                <div className="flex items-center gap-3 pt-2">
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                    selectedBook.available ? "bg-accent/20 text-accent" : "bg-destructive/20 text-destructive"
-                  }`}>
-                    {selectedBook.available ? "Disponible" : "Prestado"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    📍 Bloque {selectedBook.block} · Estante {selectedBook.shelf} · Posición {selectedBook.position}
-                  </span>
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-lg animate-fade-in">
+              <div className="flex flex-col sm:flex-row">
+                {/* Cover */}
+                <div className="sm:w-48 h-48 sm:h-auto bg-primary/10 flex items-center justify-center shrink-0">
+                  {selectedBook.coverUrl ? (
+                    <img src={selectedBook.coverUrl} alt={selectedBook.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-6">
+                      <BookOpen className="h-14 w-14 text-primary/25" />
+                      <p className="font-display text-xs text-primary/40 text-center leading-tight">{selectedBook.title}</p>
+                    </div>
+                  )}
+                </div>
+                {/* Info */}
+                <div className="p-6 space-y-3 flex-1">
+                  <div>
+                    <h2 className="font-display text-2xl font-bold text-foreground leading-tight">{selectedBook.title}</h2>
+                    <p className="text-muted-foreground mt-1">{selectedBook.author}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground font-medium">{selectedBook.category}</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground">{selectedBook.year > 0 ? selectedBook.year : `${Math.abs(selectedBook.year)} a.C.`}</span>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      selectedBook.available ? "bg-accent/20 text-accent" : "bg-destructive/20 text-destructive"
+                    }`}>
+                      {selectedBook.available ? "✓ Disponible" : "✗ Prestado"}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedBook.description}</p>
+                  <p className="text-xs text-muted-foreground">ISBN: {selectedBook.isbn}</p>
+                  
+                  <div className="flex gap-3 pt-2">
+                    <Button onClick={() => handleViewLocation(selectedBook)} className="gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Ver ubicación
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" onClick={() => { setSelectedBook(null); setShowMap(false); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -95,35 +130,45 @@ const Index = () => {
         </section>
       )}
 
-      {/* Library Map */}
-      {showMap && (
+      {/* Library Map — only shown after clicking "Ver ubicación" */}
+      {showMap && selectedBook && (
         <section id="library-map" className="px-4 pb-12">
           <div className="container max-w-2xl">
             <LibraryMap
               highlightedBook={selectedBook}
               selectedBlock={selectedBlock}
               onSelectBlock={setSelectedBlock}
-              onViewBookLocation={handleViewLocation}
+              onViewBookLocation={(book) => {
+                setSelectedBook(book);
+                setSelectedBlock(book.block);
+                document.getElementById("book-detail")?.scrollIntoView({ behavior: "smooth" });
+              }}
               books={books}
             />
           </div>
         </section>
       )}
 
-      {/* Browse by Category */}
-      <section className="px-4 pb-16">
+      {/* Browse Catalog */}
+      <section className="px-4 py-16 bg-card/50">
         <div className="container">
-          <h2 className="font-display text-2xl font-bold text-foreground text-center mb-2">Explorar Catálogo</h2>
-          <p className="text-center text-muted-foreground mb-8">Descubre todos los materiales disponibles</p>
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl font-bold text-foreground">Explorar Catálogo</h2>
+            <p className="text-muted-foreground mt-2">Descubre todos los materiales disponibles en la biblioteca</p>
+          </div>
 
           {categories.map((cat) => (
-            <div key={cat} className="mb-10">
-              <h3 className="font-display text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">{cat}</h3>
+            <div key={cat} className="mb-12">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-1 h-6 rounded-full bg-primary" />
+                <h3 className="font-display text-xl font-bold text-foreground">{cat}</h3>
+                <span className="text-sm text-muted-foreground">({books.filter(b => b.category === cat).length} libros)</span>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {books
                   .filter((b) => b.category === cat)
                   .map((book) => (
-                    <BookCard key={book.id} book={book} onViewLocation={handleViewLocation} />
+                    <BookCard key={book.id} book={book} onViewLocation={handleSelectBook} />
                   ))}
               </div>
             </div>
@@ -132,10 +177,19 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          Sistema de Búsqueda de Material Bibliográfico y Ubicación — Politécnico Colombiano Jaime Isaza Cadavid
-        </p>
+      <footer className="border-t border-border py-8 bg-card">
+        <div className="container text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 text-primary">
+            <BookOpen className="h-5 w-5" />
+            <span className="font-display font-bold">BiblioSearch</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sistema de Búsqueda de Material Bibliográfico y Ubicación
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Politécnico Colombiano Jaime Isaza Cadavid — Semillero SIESI
+          </p>
+        </div>
       </footer>
     </div>
   );
