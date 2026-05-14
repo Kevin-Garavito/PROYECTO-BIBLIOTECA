@@ -1,0 +1,35 @@
+{
+  "name": "biblioseach-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend de BiblioSearch - API REST",
+  "scripts": {
+    "dev": "node --import tsx ../server/server.ts",
+    "start": "node --import tsx ../server/server.ts",
+    "seed": "node --import tsx ../server/seed.ts",
+    "build": "echo 'Backend is already JavaScript/TypeScript'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.22.2",
+    "express-rate-limit": "^8.5.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.10.0",
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^22.16.5",
+    "tsx": "^4.10.5",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
+  }
+}

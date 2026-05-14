@@ -1,0 +1,19 @@
+# Backend Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy backend package files
+COPY backend/package.json backend/package-lock.json* ./
+
+# Install dependencies
+RUN npm install
+
+# Copy entire project (for access to src/data/books.ts)
+COPY . .
+
+# Expose port
+EXPOSE 3001
+
+# Development command
+CMD ["npm", "run", "dev"]

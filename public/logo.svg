@@ -1,0 +1,44 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Book Cover Left -->
+  <path d="M 80 180 L 140 160 L 140 380 L 80 400 Z" fill="#1e40af" filter="url(#shadow)"/>
+  
+  <!-- Book Cover Right -->
+  <path d="M 140 160 L 340 140 L 340 360 L 140 380 Z" fill="#2563eb" filter="url(#shadow)"/>
+  
+  <!-- Book Pages -->
+  <path d="M 150 165 L 330 150 L 330 360 L 150 375 Z" fill="#f5f5f5"/>
+  
+  <!-- Magnifying Glass Circle -->
+  <circle cx="280" cy="240" r="90" fill="none" stroke="#fbbf24" stroke-width="12"/>
+  <circle cx="280" cy="240" r="70" fill="none" stroke="#f59e0b" stroke-width="8"/>
+  <circle cx="280" cy="240" r="50" fill="none" stroke="#fb923c" stroke-width="6"/>
+  
+  <!-- Location Pin -->
+  <g transform="translate(280, 220)">
+    <circle cx="0" cy="0" r="18" fill="#ef4444"/>
+    <circle cx="0" cy="0" r="12" fill="#fca5a5"/>
+  </g>
+  
+  <!-- Magnifying Glass Handle -->
+  <line x1="340" y1="300" x2="390" y2="350" stroke="#fbbf24" stroke-width="12" stroke-linecap="round"/>
+  
+  <!-- Decorative Stars -->
+  <circle cx="400" cy="140" r="4" fill="#fbbf24"/>
+  <circle cx="420" cy="155" r="6" fill="#fbbf24"/>
+  <circle cx="385" cy="165" r="5" fill="#06b6d4"/>
+  <circle cx="430" cy="180" r="3" fill="#06b6d4"/>
+  
+  <!-- Bookmark -->
+  <rect x="310" y="380" width="15" height="50" fill="#f59e0b" rx="2"/>
+</svg>

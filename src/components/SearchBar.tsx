@@ -94,12 +94,12 @@ const SearchBar = ({ books, onSelectBook }: SearchBarProps) => {
 
       {isOpen && (
         <div className="absolute z-50 mt-2 w-full rounded-lg border border-border bg-card shadow-xl overflow-hidden animate-fade-in">
-          {suggestions.map((book, i) => (
+          {suggestions.map((book, index) => (
             <button
               key={book.id}
               onClick={() => handleSelect(book)}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                i === selectedIndex ? "bg-primary/10" : "hover:bg-muted"
+                index === selectedIndex ? "bg-primary/10" : "hover:bg-muted"
               }`}
             >
               <div className="w-8 h-10 rounded-sm bg-primary/20 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
