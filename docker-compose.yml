@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Frontend development server
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    command: npm run dev
+
+  # Backend API server
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./server:/app/server
+      - ./src:/app/src
+      - ./public/uploads:/app/public/uploads
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - FRONTEND_URL=http://localhost:5173
+      - ADMIN_PASSWORD=admin123
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - LOG_LEVEL=info
+      - RATE_LIMIT_WINDOW=15
+      - RATE_LIMIT_MAX_REQUESTS=100
+    depends_on:
+      - frontend
+    command: npm run dev
+
+volumes:
+  uploads:
+    driver: local

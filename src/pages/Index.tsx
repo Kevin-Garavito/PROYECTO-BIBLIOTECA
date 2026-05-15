@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Shield, Search, MapPin, X, ArrowRight } from "lucide-react";
 import SearchBar from "@/components/SearchBar";
@@ -9,10 +9,26 @@ import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-library.jpg";
 
 const Index = () => {
-  const [books] = useState<Book[]>(sampleBooks);
+  const [books, setBooks] = useState<Book[]>(sampleBooks);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/books");
+        if (!res.ok) throw new Error("Error al cargar libros");
+        const data = await res.json();
+        setBooks(data.length > 0 ? data : sampleBooks);
+      } catch (error) {
+        console.error(error);
+        setBooks(sampleBooks);
+      }
+    };
+    
+    loadBooks();
+  }, []);
 
   const handleSelectBook = (book: Book) => {
     setSelectedBook(book);
@@ -37,10 +53,16 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="container flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2.5">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <span className="font-display text-lg font-bold text-foreground">BiblioSearch</span>
+        <div className="container flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="BiblioSearch" className="h-10 w-10" />
+            <div>
+              <span className="font-display text-lg font-bold text-foreground">BiblioSearch</span>
+              <p className="text-xs text-muted-foreground">Sistema de Búsqueda y Ubicación</p>
+            </div>
+            <div className="hidden sm:block ml-4 pl-4 border-l border-border">
+              <img src="/escudo-politecnico.svg" alt="Politécnico Colombiano" className="h-12 w-auto" />
+            </div>
           </div>
           <Link to="/admin">
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">

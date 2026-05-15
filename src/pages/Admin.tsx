@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Plus, Pencil, Trash2, Lock, Upload, Image, X } from "lucide-react";
 import { Book, sampleBooks } from "@/data/books";
@@ -32,42 +32,112 @@ const Admin = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Solo se permiten archivos de imagen");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setForm({ ...form, coverUrl: reader.result as string });
+    
+    // Upload to server
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await fetch("http://localhost:3001/api/upload", {
+        method: "POST",
+        body: formData
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Error al subir imagen");
+      }
+      
+      setForm({ ...form, coverUrl: data.url });
       toast.success("Imagen de portada cargada");
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      toast.error("Error al subir imagen: " + (error instanceof Error ? error.message : String(error)));
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.title || !form.author) {
       toast.error("Título y autor son obligatorios");
       return;
     }
-    if (editingBook) {
-      setBooks((prev) => prev.map((b) => (b.id === editingBook.id ? { ...form, id: editingBook.id } : b)));
-      toast.success("Libro actualizado");
-    } else {
-      setBooks((prev) => [...prev, { ...form, id: Date.now().toString() }]);
-      toast.success("Libro agregado");
+    
+    try {
+      if (editingBook) {
+        // Actualizar libro existente
+        const res = await fetch(`http://localhost:3001/api/books/${editingBook.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          const errorMsg = data.errors?.join(", ") || data.error || "Error al actualizar";
+          throw new Error(errorMsg);
+        }
+        
+        setBooks((prev) => prev.map((b) => (b.id === editingBook.id ? { ...form, id: editingBook.id } : b)));
+        toast.success("Libro actualizado ✓");
+      } else {
+        // Crear nuevo libro
+        const res = await fetch("http://localhost:3001/api/books", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          const errorMsg = data.errors?.join(", ") || data.error || "Error al agregar";
+          throw new Error(errorMsg);
+        }
+        
+        const newBook = data;
+        setBooks((prev) => [...prev, newBook]);
+        toast.success("Libro agregado ✓");
+      }
+      setEditingBook(null);
+      setIsAdding(false);
+      setForm(emptyBook);
+    } catch (error) {
+      toast.error("Error al guardar: " + (error instanceof Error ? error.message : String(error)));
     }
-    setEditingBook(null);
-    setIsAdding(false);
-    setForm(emptyBook);
   };
 
-  const handleDelete = (id: string) => {
-    setBooks((prev) => prev.filter((b) => b.id !== id));
-    toast.success("Libro eliminado");
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/books/${id}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("Error al eliminar");
+      setBooks((prev) => prev.filter((b) => b.id !== id));
+      toast.success("Libro eliminado ✓");
+    } catch (error) {
+      toast.error("Error al eliminar: " + (error instanceof Error ? error.message : String(error)));
+    }
   };
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/books");
+        if (!res.ok) throw new Error("Error al cargar libros");
+        const data = await res.json();
+        setBooks(data.length > 0 ? data : sampleBooks);
+      } catch (error) {
+        console.error(error);
+        setBooks(sampleBooks);
+      }
+    };
+    
+    if (isLoggedIn) {
+      loadBooks();
+    }
+  }, [isLoggedIn]);
 
   const startEdit = (book: Book) => {
     const { id, ...rest } = book;
@@ -187,7 +257,7 @@ const Admin = () => {
                   </Button>
                   <p className="text-xs text-muted-foreground">O pega una URL:</p>
                   <Input
-                    value={form.coverUrl.startsWith("data:") ? "" : form.coverUrl}
+                    value={form.coverUrl}
                     onChange={(e) => setForm({ ...form, coverUrl: e.target.value })}
                     placeholder="https://ejemplo.com/portada.jpg"
                     className="text-xs"
