@@ -4,6 +4,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import { v2 as cloudinary } from "cloudinary";
 import { loadBooks, saveBooks, getBook, createBook, updateBook, deleteBook, initializeDatabase } from "./db.js";
 import { sampleBooks } from "../src/data/books.js";
 import type { Book } from "../src/data/books.js";
@@ -13,22 +15,32 @@ import { generateToken, verifyAdminPassword } from "./auth.js";
 import { BookSchema, LoginSchema, safeValidateData } from "./validation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load environment variables from .env.local
+// Busca en: backend/.env.local (ya que npm run dev se ejecuta desde backend/)
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+
 const app = express();
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const uploadsDir = path.join(__dirname, "..", "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    cb(null, uploadsDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Verify Cloudinary is configured
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  logger.info("✓ Cloudinary configured successfully");
+} else {
+  logger.error("✗ Cloudinary configuration incomplete. Check .env.local variables:");
+  logger.error(`  CLOUDINARY_CLOUD_NAME: ${process.env.CLOUDINARY_CLOUD_NAME ? "✓" : "✗ MISSING"}`);
+  logger.error(`  CLOUDINARY_API_KEY: ${process.env.CLOUDINARY_API_KEY ? "✓" : "✗ MISSING"}`);
+  logger.error(`  CLOUDINARY_API_SECRET: ${process.env.CLOUDINARY_API_SECRET ? "✓" : "✗ MISSING"}`);
+}
+
+// Configure multer for memory storage (will upload to Cloudinary)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -63,7 +75,7 @@ app.use((req, res, next) => {
 
 // Upload image route - BEFORE body parsers
 app.post("/api/upload", uploadLimiter, (req, res, next) => {
-  upload.single("file")(req, res, (err) => {
+  upload.single("file")(req, res, async (err) => {
     if (err) {
       logger.error(`Upload error: ${err.message}`);
       if (err.message.includes("Invalid file type")) {
@@ -74,15 +86,27 @@ app.post("/api/upload", uploadLimiter, (req, res, next) => {
       }
       return res.status(400).json({ error: err.message });
     }
-    
+
     try {
       if (!req.file) {
         logger.warn("Upload attempted without file");
         return res.status(400).json({ error: "No file provided" });
       }
-      const imageUrl = `/uploads/${req.file.filename}`;
-      logger.info(`File uploaded successfully: ${req.file.filename}`);
-      res.json({ url: imageUrl });
+
+      // Upload to Cloudinary
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: "book-finder", resource_type: "auto" },
+        (error, result) => {
+          if (error) {
+            logger.error(`Cloudinary error: ${error.message}`);
+            return res.status(500).json({ error: "Failed to upload to cloud storage" });
+          }
+          logger.info(`File uploaded to Cloudinary: ${result?.public_id}`);
+          res.json({ url: result?.secure_url });
+        }
+      );
+
+      stream.end(req.file.buffer);
     } catch (error) {
       logger.error(`Error uploading file: ${error}`);
       res.status(500).json({ error: "Failed to upload file" });
@@ -93,9 +117,6 @@ app.post("/api/upload", uploadLimiter, (req, res, next) => {
 // Body parsers - AFTER upload route
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-// Serve static files
-app.use("/uploads", express.static(path.join(__dirname, "..", "public", "uploads")));
 
 // Initialize database
 initializeDatabase(sampleBooks);
@@ -239,16 +260,22 @@ app.delete("/api/books/:id", (req, res) => {
       return res.status(404).json({ error: "Book not found" });
     }
 
-    // Delete cover image if it exists
-    if (book.coverUrl && book.coverUrl.startsWith("/uploads/")) {
-      const imagePath = path.join(__dirname, "..", "public", book.coverUrl);
-      if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-          logger.info(`Deleted cover image: ${book.coverUrl}`);
-        } catch (err) {
-          logger.warn(`Could not delete image: ${err}`);
+    // Delete cover image from Cloudinary if it exists
+    if (book.coverUrl && book.coverUrl.includes("cloudinary")) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const publicId = book.coverUrl.split("/").pop()?.split(".")[0];
+        if (publicId) {
+          cloudinary.uploader.destroy(`book-finder/${publicId}`, (error) => {
+            if (error) {
+              logger.warn(`Could not delete image from Cloudinary: ${error}`);
+            } else {
+              logger.info(`Deleted cover image from Cloudinary: ${publicId}`);
+            }
+          });
         }
+      } catch (err) {
+        logger.warn(`Error deleting from Cloudinary: ${err}`);
       }
     }
 
@@ -265,7 +292,7 @@ app.delete("/api/books/:id", (req, res) => {
 });
 
 // Upload book cover image
-app.post("/api/books/:id/cover", uploadLimiter, upload.single("cover"), (req, res) => {
+app.post("/api/books/:id/cover", uploadLimiter, upload.single("cover"), async (req, res) => {
   try {
     if (!req.file) {
       logger.warn("Cover upload attempted without file");
@@ -278,27 +305,40 @@ app.post("/api/books/:id/cover", uploadLimiter, upload.single("cover"), (req, re
       return res.status(404).json({ error: "Book not found" });
     }
 
-    // Delete old cover if it exists
-    if (book.coverUrl && book.coverUrl.startsWith("/uploads/")) {
-      const imagePath = path.join(__dirname, "..", "public", book.coverUrl);
-      if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-        } catch (err) {
-          logger.warn(`Could not delete old image: ${err}`);
+    // Delete old cover from Cloudinary if it exists
+    if (book.coverUrl && book.coverUrl.includes("cloudinary")) {
+      try {
+        const publicId = book.coverUrl.split("/").pop()?.split(".")[0];
+        if (publicId) {
+          await cloudinary.uploader.destroy(`book-finder/${publicId}`);
+          logger.info(`Deleted old cover from Cloudinary: ${publicId}`);
         }
+      } catch (err) {
+        logger.warn(`Could not delete old cover from Cloudinary: ${err}`);
       }
     }
 
-    const imageUrl = `/uploads/${req.file.filename}`;
-    const updated = updateBook(req.params.id, { coverUrl: imageUrl });
+    // Upload new cover to Cloudinary
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "book-finder", resource_type: "auto" },
+      async (error, result) => {
+        if (error) {
+          logger.error(`Cloudinary error: ${error.message}`);
+          return res.status(500).json({ error: "Failed to upload cover" });
+        }
 
-    if (!updated) {
-      return res.status(404).json({ error: "Book not found" });
-    }
+        const updated = updateBook(req.params.id, { coverUrl: result?.secure_url });
 
-    logger.info(`Cover uploaded for book ${req.params.id}: ${req.file.filename}`);
-    res.json({ coverUrl: imageUrl });
+        if (!updated) {
+          return res.status(404).json({ error: "Book not found" });
+        }
+
+        logger.info(`Cover uploaded for book ${req.params.id}: ${result?.public_id}`);
+        res.json({ coverUrl: result?.secure_url });
+      }
+    );
+
+    stream.end(req.file.buffer);
   } catch (error) {
     logger.error(`Error uploading cover: ${error}`);
     res.status(500).json({ error: "Failed to upload cover" });
